@@ -147,13 +147,15 @@ Sample import files are pre-generated in `backend/data/`:
 
 ---
 
-## 6. Installation & Execution
+## 6. Execution & Deployment
 
-### Prerequisites
+### 6.1 Local Development
+
+#### Prerequisites
 - Python 3.10+
 - Node.js 18+ and npm
 
-### Quick Start (One-Click)
+#### Quick Start (One-Click)
 On Windows:
 ```powershell
 .\start_servers.bat
@@ -163,12 +165,12 @@ or via PowerShell:
 .\start_servers.ps1
 ```
 
-### Manual Start
+#### Manual Start
 
-#### 1. Backend Setup
+##### 1. Backend Setup
 ```bash
-# Install dependencies
-pip install fastapi uvicorn sqlalchemy rapidfuzz scikit-learn pandas openpyxl python-dotenv
+# Install backend dependencies
+pip install -r backend/requirements.txt
 
 # Run the backend server
 python run_backend.py
@@ -176,17 +178,79 @@ python run_backend.py
 Backend API will be live at: **`http://127.0.0.1:8000`**  
 Interactive Swagger Docs: **`http://127.0.0.1:8000/docs`**
 
-#### 2. Frontend Setup
+##### 2. Frontend Setup
 ```bash
 cd frontend
 
-# Install dependencies (already completed in workspace)
+# Install dependencies
 npm install
 
 # Run Vite development server
 npm run dev
 ```
-Frontend will be live at: **`http://localhost:5173`**
+Frontend will be live at: **`http://localhost:5173`** (proxies `/api` requests to `http://localhost:8000`).
+
+---
+
+### 6.2 Production Deployment on Vercel
+
+SAMHITA AI is configured for one-click deployment on **Vercel** as a unified full-stack monorepo:
+- **Frontend:** Built with Vite into static assets served from the edge.
+- **Backend:** FastAPI application running via Vercel Serverless Functions.
+- **Unified Domain Routing:** All API requests go to `/api/*` on the same domain with zero CORS complications.
+
+#### 1. Repository Architecture for Vercel
+```
+/
+├── vercel.json               # Root Vercel configuration (Services & rewrites)
+├── frontend/                 # React 19 + TypeScript + Vite app
+│   ├── package.json
+│   └── vite.config.ts
+├── backend/                  # FastAPI service
+│   ├── app/
+│   │   └── main.py           # FastAPI entrypoint with /api routing & docs
+│   ├── requirements.txt      # Production Python dependencies
+│   ├── samhita.db            # Bundled seed database (700 CPSE materials)
+│   └── data/                 # Sample CSV / Excel import templates
+└── README.md
+```
+
+#### 2. Vercel Configuration (`vercel.json`)
+The root `vercel.json` coordinates both services:
+- **Frontend Service:** Root directory `frontend/`, Framework `vite`, output `dist`.
+- **Backend Service:** Root directory `backend/`, Framework `fastapi`, entrypoint `app/main:app`.
+- **Rewrites:**
+  - `/api` &rarr; `backend`
+  - `/api/(.*)` &rarr; `backend`
+  - `/(.*)` &rarr; `frontend`
+
+#### 3. Database in Serverless Environments
+- **Zero-Setup Demo (Default):** The application automatically detects Vercel's serverless environment and mounts the bundled `samhita.db` SQLite database inside `/tmp/samhita.db` (the writable partition in AWS Lambda/Vercel functions). This allows instant out-of-the-box demonstration of all 700 materials, harmonization groups, and duplicate detection without requiring external database provisioning.
+- **Persistent Production (Recommended for high concurrency):** In high-volume production where data writes must persist across ephemeral serverless container cold-starts, supply a PostgreSQL connection string in the Vercel project environment variables:
+  ```env
+  DATABASE_URL=postgresql://user:password@neon-or-supabase-host/samhita
+  ```
+
+#### 4. Deploying via Vercel CLI
+```bash
+# Install Vercel CLI
+npm install -g vercel
+
+# Deploy preview
+vercel
+
+# Deploy to production
+vercel --prod
+```
+
+#### 5. Deploying via GitHub
+1. Push the repository to GitHub.
+2. In the Vercel Dashboard, select **Import Project** and choose the repository.
+3. Vercel will automatically detect `vercel.json` and build both the frontend and backend services.
+4. Once deployed:
+   - Web Application: `https://<your-project>.vercel.app`
+   - API Health: `https://<your-project>.vercel.app/api/health`
+   - Interactive API Docs: `https://<your-project>.vercel.app/api/docs`
 
 ---
 

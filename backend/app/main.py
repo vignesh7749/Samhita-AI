@@ -1,9 +1,25 @@
 import os
+import sys
+import types
+from pathlib import Path
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
+
+# Ensure backend and project root are in sys.path and backend module is discoverable in Vercel runtime
+_backend_dir = Path(__file__).resolve().parent.parent
+_project_root = _backend_dir.parent
+
+for _p in [str(_project_root), str(_backend_dir)]:
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+
+if "backend" not in sys.modules:
+    _backend_pkg = types.ModuleType("backend")
+    _backend_pkg.__path__ = [str(_backend_dir)]
+    sys.modules["backend"] = _backend_pkg
 
 from backend.app.database.session import engine, Base, SessionLocal, get_db
 from backend.app.models.models import Material, StandardMaterial
@@ -154,6 +170,35 @@ def health_check():
         "ai_engine": "6-Layer Hybrid Normalization & Matcher",
         "database": "Active"
     }
+
+@app.get("/api")
+@app.get("/")
+def api_root():
+    return {
+        "status": "online",
+        "service": "SAMHITA AI Core Engine",
+        "version": "1.0.0",
+        "docs": "/api/docs",
+        "health": "/api/health"
+    }
+
+@app.get("/api/docs", include_in_schema=False)
+async def api_docs():
+    from fastapi.openapi.docs import get_swagger_ui_html
+    return get_swagger_ui_html(
+        openapi_url="/api/openapi.json",
+        title="SAMHITA AI - Swagger API Documentation"
+    )
+
+@app.get("/api/openapi.json", include_in_schema=False)
+async def api_openapi_json():
+    from fastapi.openapi.utils import get_openapi
+    return get_openapi(
+        title=app.title,
+        version=app.version,
+        description=app.description,
+        routes=app.routes
+    )
 
 if __name__ == "__main__":
     import uvicorn
