@@ -1,3 +1,10 @@
+## 🚀 Live Demo
+
+**[🌐 Open SAMHITA AI](https://samhita-ai.vercel.app/)**
+
+> AI-powered standardization and harmonization of material codes across CPSEs.
+
+
 # SAMHITA AI (संहिता)
 ### AI-Powered Material Standardization & Harmonization Platform Across CPSEs
 **Smart India Hackathon (SIH) Prototype**
